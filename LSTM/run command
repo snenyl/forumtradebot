@@ -1,0 +1,1 @@
+docker run --gpus all -it --rm 766351528002.dkr.ecr.eu-central-1.amazonaws.com/development/lstm:0.1.0

@@ -1,0 +1,5 @@
+Backtesting>=0.3.3
+pandas>=2.0
+scikit-learn>=1.5
+torch>=2.5
+tensorboard>=2.14
