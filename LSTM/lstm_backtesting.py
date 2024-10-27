@@ -1,15 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset, Subset
-from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 from backtesting import Backtest, Strategy
 
 # Load and preprocess the data
 data = pd.read_csv('data/merged_output_pcib.csv', parse_dates=True, index_col='time')
 data.index = pd.to_datetime(data.index, unit='s')
-# data = data[data.index >= '2019-02-25']
 data = data.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'})
 data.dropna(inplace=True)
 
@@ -33,7 +30,7 @@ seq_length = 120
 class MultiStepLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, output_size=3, num_layers=1):
         super(MultiStepLSTM, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)  # Predict 3 future closing prices
 
     def forward(self, x):
@@ -72,24 +69,22 @@ data['Predicted_Close_1'] = predictions_1
 data['Predicted_Close_5'] = predictions_5
 data['Predicted_Close_10'] = predictions_10
 
-# Define the strategy based on direct predictions without polynomial fit
+# Define the strategy based on direct predictions
 class LstmPredictionStrategy(Strategy):
     short_window = 20  # Short SMA period
     long_window = 50   # Long SMA period
-    equity_percentage = 0.05  # Use 1% of account equity for each trade
+    equity_percentage = 0.05  # Use 5% of account equity for each trade
 
     def init(self):
         # Indicators for each prediction horizon
-        self.predicted_close_1 = self.I(lambda: self.data.Predicted_Close_1, name='Predicted_Close_1')
         self.predicted_close_5 = self.I(lambda: self.data.Predicted_Close_5, name='Predicted_Close_5')
-        self.predicted_close_10 = self.I(lambda: self.data.Predicted_Close_10, name='Predicted_Close_10')
 
         # Define short and long SMAs
         self.sma_short = self.I(pd.Series(self.data.Close).rolling(self.short_window).mean, name='SMA_Short')
         self.sma_long = self.I(pd.Series(self.data.Close).rolling(self.long_window).mean, name='SMA_Long')
 
     def next(self):
-        # Use the 5-step prediction to determine trend direction and size
+        # Use the 5-step prediction to determine trend direction
         pred_close_5 = self.predicted_close_5[-1]
         current_close = self.data.Close[-1]
 
@@ -104,17 +99,15 @@ class LstmPredictionStrategy(Strategy):
         sma_short = self.sma_short[-1]
         sma_long = self.sma_long[-1]
 
-        # Buy if 5-step prediction is higher than the current close and SMA short crosses above SMA long
+        # Buy if prediction is higher than current close and SMA short crosses above SMA long
         if pred_close_5 > current_close and sma_short > sma_long:
             if not self.position.is_long:
                 self.buy(size=size)
 
-        # Sell if 5-step prediction is lower than the current close and SMA short crosses below SMA long
+        # Sell if prediction is lower than current close and SMA short crosses below SMA long
         elif pred_close_5 < current_close and sma_short < sma_long:
             if not self.position.is_short:
                 self.sell(size=size)
-
-
 
 # Run the backtest
 bt = Backtest(data, LstmPredictionStrategy, cash=10000, commission=0.002)

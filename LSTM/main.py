@@ -11,11 +11,12 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 
-# Define the Multi-Step LSTM Model
-class MultiStepLSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size=3, num_layers=1, dropout=0.2):
-        super(MultiStepLSTM, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+# Define the Multi-Step Stacked LSTM Model
+class StackedLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size=3, num_layers=2, dropout=0.2):
+        super(StackedLSTM, self).__init__()
+        # Stacked LSTM with multiple layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
@@ -29,7 +30,7 @@ class MultiStepLSTM(nn.Module):
 input_size = 25
 hidden_size = 50
 output_size = 3
-num_layers = 1
+num_layers = 2  # Stacked LSTM with 2 layers
 num_epochs = 20
 batch_size = 64
 learning_rate = 0.001
@@ -98,12 +99,12 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # Instantiate the model, define the loss function and optimizer
-model = MultiStepLSTM(input_size, hidden_size, output_size, num_layers).to(device)
+model = StackedLSTM(input_size, hidden_size, output_size, num_layers).to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Initialize TensorBoard writer
-writer = SummaryWriter(log_dir='runs/multi_step_lstm_experiment')
+writer = SummaryWriter(log_dir='runs/stacked_lstm_experiment')
 
 # Training Loop
 for epoch in range(num_epochs):
@@ -160,6 +161,6 @@ with torch.no_grad():
 avg_test_loss = test_loss / len(test_loader)
 print(f"Test Loss: {avg_test_loss:.4f}")
 
-model_path = 'lstm_model.pth'
+model_path = 'stacked_lstm_model.pth'
 torch.save(model.state_dict(), model_path)
 print("Model saved to", model_path)
