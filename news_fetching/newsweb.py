@@ -28,6 +28,47 @@ class JavaScriptContentFetcher:
         datetime_str = f"{date_match.group(1)} {time_match.group(1)}"
         return datetime.strptime(datetime_str, "%d.%m.%Y %H:%M:%S")
 
+    def extract_instrument(self, text_content):
+        # Regex patterns for date and time
+        instrument_match = re.search(r'(?<=Instrument)(.*?)(?=Market)', text_content)
+
+        if instrument_match:
+            return instrument_match.group(1)
+        else:
+            return None
+
+    def extract_market(self, text_content):
+        # Regex patterns for date and time
+        market_match = re.search(r'(?:Market.*?){2}(.*?)(?=Other)', text_content)
+
+        if market_match:
+            return market_match.group(1).strip()
+        else:
+            return None
+
+    def extract_attachment(self, text_content):
+        # Regex patterns for date and time
+        attachment = re.search(r'(?<=Attachment)(.*?)(?=Share)', text_content)
+
+        if attachment:
+            return attachment.group(1)
+        else:
+            return None
+
+    def extract_infomation(self, text_content):
+        # Regex patterns for date and time
+        information = re.search(r'(?<=Share message)(.*)', text_content, re.DOTALL)
+
+
+
+        if information:
+            information = information.group(1).strip()
+            information = re.sub(r'(?<!\n)\n(?!\n)', ' ', information) # keep doubble newline and delete single newline
+            return information
+        else:
+            return None
+
+
     def fetch_newsweb_message_content(self, url):
         print(f"Starting Playwright for message content at URL: {url}")
         with sync_playwright() as p:
@@ -75,11 +116,14 @@ class JavaScriptContentFetcher:
             print(f"Total announcements found: {len(self.hrefs)}")
             browser.close()
 
-    def save_to_mongodb(self, url, page_datetime, content):
+    def save_to_mongodb(self, full_url, page_datetime, instrument, attachment, market, information):
         document = {
             "time": page_datetime,
-            "url": url,
-            "content": content
+            "url": full_url,
+            "instrument": instrument,
+            "attachments": attachment,
+            "market": market,
+            "information": information
         }
         self.collection.insert_one(document)
         print(f"Saved to MongoDB: {url}")
@@ -88,17 +132,31 @@ class JavaScriptContentFetcher:
         full_url = self.message_prefix_url + href
         content = self.fetch_newsweb_message_content(full_url)
         if content:
+            print(content)
             page_datetime = self.extract_datetime(content)
-            self.save_to_mongodb(full_url, page_datetime, content)
+            instrument = self.extract_instrument(content)
+            attachment = self.extract_attachment(content)
+            market = self.extract_market(content)
+            information = self.extract_infomation(content)
+            # print(f"page_datetime: {page_datetime}, instrument: {instrument}, attachment: {attachment}, market: {market}, infomation: {infomation}")
+
+            self.save_to_mongodb(full_url, page_datetime, instrument, attachment, market, information)
 
 
 if __name__ == "__main__":
     main_url = "https://newsweb.oslobors.no/search?category=&issuer=6357&fromDate=2014-01-01&toDate=2024-10-31&market=&messageTitle="
     fetcher = JavaScriptContentFetcher(main_url)
 
-    # Step 1: Fetch all URLs to process
-    fetcher.fetch_newsweb_list_urls(main_url)
 
-    # Step 2: Use ThreadPoolExecutor to process URLs in parallel
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        executor.map(fetcher.process_href, fetcher.hrefs)
+    # Use the code bellow for mass gathering
+    # # Step 1: Fetch all URLs to process
+    # fetcher.fetch_newsweb_list_urls(main_url)
+    #
+    # # Step 2: Use ThreadPoolExecutor to process URLs in parallel
+    # with ThreadPoolExecutor(max_workers=10) as executor:
+    #     executor.map(fetcher.process_href, fetcher.hrefs)
+
+
+    # Development bellow
+    test_url_suffix = "/message/602701"
+    fetcher.process_href(test_url_suffix)
