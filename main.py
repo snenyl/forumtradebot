@@ -154,16 +154,16 @@ class SmaCrossVolume(Strategy):
         elif crossover(self.sma2, self.sma1) and self.rolling_avg_volume[-1] < self.volume_threshold:
             self.sell()
 
-# Run backtest
-bt = Backtest(data, SmaCross, cash=10000, commission=.002, exclusive_orders=True)
-output = bt.run()
-bt.plot()
-#
 # # Run backtest
-bt = Backtest(data, MonthlyBuyHold, cash=10000, commission=.002, exclusive_orders=True)
-output = bt.run()
-bt.plot()
-#
+# bt = Backtest(data, SmaCross, cash=10000, commission=.002, exclusive_orders=True)
+# output = bt.run()
+# bt.plot()
+# #
+# # # Run backtest
+# bt = Backtest(data, MonthlyBuyHold, cash=10000, commission=.002, exclusive_orders=True)
+# output = bt.run()
+# bt.plot()
+# #
 # # Run backtest
 # bt = Backtest(data, PostVolumeBasedStrategy, cash=10000, commission=.002, exclusive_orders=True)
 # output = bt.run()

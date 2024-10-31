@@ -104,7 +104,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Initialize TensorBoard writer
-writer = SummaryWriter(log_dir='runs/stacked_lstm_experiment')
+writer = SummaryWriter(log_dir='runs/stacked_lstm_experiment', comment=f"Number of layers: {num_layers}")
 
 # Training Loop
 for epoch in range(num_epochs):
