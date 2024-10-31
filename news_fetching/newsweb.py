@@ -7,6 +7,8 @@ class JavaScriptContentFetcher:
     def __init__(self, main_url):
         self.main_url = main_url
         self.message_prefix_url = "https://newsweb.oslobors.no/"
+        self.hrefs = []
+
 
     def extract_datetime(self, text_content):
         # Updated regex pattern for date and time with more flexibility
@@ -59,31 +61,53 @@ class JavaScriptContentFetcher:
             print(f"Navigating to {main_url}")
             page.goto(main_url)
 
-            # Wait until any table element is loaded
-            print("Waiting for any table element to load")
-            page.wait_for_selector("table")
+            # Infinite loop to handle pagination
+            while True:
+                # Wait until any table element is loaded
+                print("Waiting for any table element to load")
+                page.wait_for_selector("table")
 
-            # Extract HTML content for parsing
-            html = page.content()
-            soup = BeautifulSoup(html, 'html.parser')
+                # Extract HTML content for parsing
+                html = page.content()
+                soup = BeautifulSoup(html, 'html.parser')
 
-            # Find the first table element in the HTML
-            table = soup.find("table")
-            if table:
-                print("Found the table.")
+                # Find the first table element in the HTML
+                table = soup.find("table")
+                if table:
+                    print("Found the table.")
 
-                # Find all 'a' tags within the table that have href containing "/message/"
-                message_links = table.find_all("a", href=lambda x: x and "/message/" in x)
+                    # Find all 'a' tags within the table that have href containing "/message/"
+                    message_links = table.find_all("a", href=lambda x: x and "/message/" in x)
 
-                # Extract href values and print them
-                hrefs = [link['href'] for link in message_links]
-                print("Extracted hrefs:")
-                for href in hrefs:
-                    print(href)
-            else:
-                print("Table not found!")
+                    # Extract href values and print them
+                    hrefs = [link['href'] for link in message_links]
+                    print(f"Extracted {len(hrefs)} hrefs:")
+                    print(hrefs)
 
+                    if len(hrefs) < 50:
+                        break # Break out of loop when on last page (Not bulletproof but good enough)
+
+                else:
+                    print("Table not found!")
+
+                # Attempt to locate and click the next page button
+                try:
+                    print("Looking for next page button...")
+                    next_button = page.locator("a:has-text('⟩')")
+                    if next_button.count() > 0:
+                        print("Next page button found. Clicking...")
+                        next_button.first.click()
+                        page.wait_for_load_state("domcontentloaded")  # Wait for the new page to load
+                    else:
+                        print("Next page button not found. Ending pagination.")
+                        break
+                except Exception as e:
+                    print(f"Error while trying to navigate to the next page: {e}")
+                    break
+
+            # Close the browser after pagination is complete
             browser.close()
+            print("Browser closed.")
         None
 
 # Standard entry point
