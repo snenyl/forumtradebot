@@ -6,7 +6,7 @@ from datetime import datetime
 class JavaScriptContentFetcher:
     def __init__(self, main_url):
         self.main_url = main_url
-        self.message_prefix_url = "https://newsweb.oslobors.no/"
+        self.message_prefix_url = "https://newsweb.oslobors.no"
         self.hrefs = []
 
 
@@ -83,6 +83,7 @@ class JavaScriptContentFetcher:
                     hrefs = [link['href'] for link in message_links]
                     print(f"Extracted {len(hrefs)} hrefs:")
                     print(hrefs)
+                    self.hrefs.extend(hrefs)
 
                     if len(hrefs) < 50:
                         break # Break out of loop when on last page (Not bulletproof but good enough)
@@ -106,6 +107,7 @@ class JavaScriptContentFetcher:
                     break
 
             # Close the browser after pagination is complete
+            print(f"Found a total of {len(self.hrefs)} announcements")
             browser.close()
             print("Browser closed.")
         None
@@ -119,8 +121,10 @@ if __name__ == "__main__":
 
     fetcher.fetch_newsweb_list_urls(main_url)
 
-    # content = fetcher.fetch_newsweb_message_content(url)
-    # if content:
-    #     page_datetime = fetcher.extract_datetime(content)
-    #     print(page_datetime)
-    #     print(content)
+    for href in fetcher.hrefs:
+        content = fetcher.fetch_newsweb_message_content(fetcher.message_prefix_url + href)
+        if content:
+            page_datetime = fetcher.extract_datetime(content)
+            print(page_datetime)
+            print(content)
+
