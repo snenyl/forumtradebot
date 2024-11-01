@@ -1,0 +1,22 @@
+What is the latest within time series forcasting using AI and LLMs
+ChatGPT said:
+ChatGPT
+
+Recent advancements in time series forecasting have increasingly leveraged artificial intelligence (AI) and large language models (LLMs) to enhance predictive accuracy and efficiency. Key developments include:
+
+Chronos Framework: Developed by Amazon Web Services researchers, Chronos adapts transformer-based language model architectures for time series forecasting. By tokenizing time series data into a fixed vocabulary, Chronos enables models to learn patterns across diverse datasets, achieving notable zero-shot performance on unseen data.
+Amazon Science
+
+Time-LLM: This framework repurposes LLMs for time series forecasting by reprogramming input data into text-like formats compatible with language models. Time-LLM demonstrates strong performance in both few-shot and zero-shot learning scenarios, highlighting the adaptability of LLMs to numerical data.
+ArXiv
+
+LLM4TS: The LLM4TS framework aligns pre-trained LLMs with time series data through a two-stage fine-tuning process. It introduces a two-level aggregation method to integrate multi-scale temporal data, enhancing the model's ability to interpret time-specific information.
+ArXiv
+
+TimeCMA: TimeCMA employs cross-modality alignment to integrate time series data with LLMs. It utilizes a dual-modality encoding module and a cross-modality alignment module to retrieve high-quality time series embeddings, improving forecasting accuracy.
+ArXiv
+
+Survey on LLMs for Time Series: A comprehensive survey explores methodologies for applying LLMs to time series analysis, addressing challenges in aligning numerical data with language models and detailing strategies like direct prompting, quantization, and multimodal integration.
+ArXiv
+
+These developments underscore the potential of LLMs to transform time series forecasting by leveraging their pattern recognition and reasoning capabilities, offering promising avenues for future research and application.
