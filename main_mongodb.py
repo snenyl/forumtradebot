@@ -25,6 +25,7 @@ df.set_index('time', inplace=True)  # Set Date as the index
 
 df = df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close'})
 
+# df = df[df.index >= '2023-01-01'] # Need to scale down at higher resolutions.
 
 # Close the MongoDB connection
 client.close()
@@ -33,7 +34,7 @@ print(df.columns)
 print(df.head)
 
 # Function to calculate RSI
-def calculate_rsi(prices, period=14):
+def calculate_rsi(prices, period=7):
     # Convert to pandas Series if needed
     prices = pd.Series(prices)
     delta = prices.diff()  # Calculate the daily change in prices
@@ -47,8 +48,9 @@ def calculate_rsi(prices, period=14):
 # Define an RSI-based trading strategy
 class RSIStrategy(Strategy):
     rsi_period = 14  # Default RSI period (can be adjusted)
-    oversold_level = 30  # RSI level considered oversold (buy)
-    overbought_level = 70  # RSI level considered overbought (sell)
+    oversold_level = 45  # RSI level considered oversold (buy)
+    overbought_level = 55  # RSI level considered overbought (sell)
+    custom_size=100
 
     def init(self):
         # Compute RSI indicator
@@ -57,10 +59,10 @@ class RSIStrategy(Strategy):
     def next(self):
         if self.rsi[-1] < self.oversold_level:  # RSI crosses below 30
             if not self.position:  # Open a position if not already in one
-                self.buy()
+                self.buy(size=self.custom_size)
         elif self.rsi[-1] > self.overbought_level:  # RSI crosses above 70
             if self.position:  # Close position if RSI indicates overbought
-                self.sell()
+                self.sell(size=self.custom_size)
 
 # Run backtest
 bt = Backtest(df, RSIStrategy, cash=10000, commission=.002)
