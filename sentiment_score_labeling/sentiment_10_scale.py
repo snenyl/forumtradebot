@@ -97,7 +97,7 @@ def process_post(post):
 # Main logic for using ThreadPoolExecutor
 def main():
     posts = list(collection.find({}, {"content": 1, "likes": 1, "post_published_date": 1, "sentiment": 1, "outlook": 1, "credibility": 1, "referential_depth": 1}))
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=16) as executor:
         # Submit tasks to the executor
         futures = [executor.submit(process_post, post) for post in posts]
 

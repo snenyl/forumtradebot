@@ -5,12 +5,15 @@ from pymongo import MongoClient
 
 # MongoDB connection setup
 client = MongoClient('mongodb://mongoadmin:secret@10.0.0.150:27017/?authMechanism=DEFAULT')
-db = client.tekinvestor
-collection = db.pci_biotech_llama_10
+db_tekinvestor = client.tekinvestor
+db_osebx = client.osebx
+collection_pci_biotech_tek = db_tekinvestor.pci_biotech_llama_10
+collection_pci_biotech_osebx = db_osebx.PCIB_1D
 
 # Fetch data from MongoDB
-data = list(collection.find({}, {
+data = list(collection_pci_biotech_tek.find({}, {
     "post_published_date": 1,
+    "content": 1,
     "credibility_value": 1,
     "outlook_value": 1,
     "referential_depth_value": 1,
@@ -18,11 +21,46 @@ data = list(collection.find({}, {
     "_id": 0
 }))
 
+# Fetch data from MongoDB
+stock_data = list(collection_pci_biotech_osebx.find({}, {
+    "time": 1,
+    "close": 1,
+    "Volume": 1,
+    "Histogram": 1,
+    "Signal": 1,
+    "MACD": 1,
+    "_id": 0  # Optional, if you don't want the `_id` field
+}))
+
 # Convert to DataFrame
 df = pd.DataFrame(data)
+df_stock = pd.DataFrame(stock_data)
+
+# Convert the 'time' field to datetime
+df_stock['time'] = pd.to_datetime(df_stock['time'])
+df_stock.set_index('time', inplace=True) # Set 'time' as the index
+df_stock = df_stock.loc['2016-09-05':] # Filter the data to start from 2016-09-05
+
+df_stock['close_pct_change'] = df_stock['close'].pct_change() * 100
+
+# Normalize Volume and close using Min-Max normalization
+df_stock['Volume'] = (df_stock['Volume'] - df_stock['Volume'].min()) / (df_stock['Volume'].max() - df_stock['Volume'].min())
+df_stock['close_pct_change'] = 2 * ((df_stock['close'].pct_change() - df_stock['close'].pct_change().min()) /
+                                    (df_stock['close'].pct_change().max() - df_stock['close'].pct_change().min())) - 1# df_stock['close'] = (df_stock['close'] - df_stock['close'].min()) / (df_stock['close'].max() - df_stock['close'].min())
+
+# Add post_date column containing only the date part
+df_stock['post_date'] = df_stock.index.date  # Extract the date from the datetime index
+df_stock.set_index('post_date', inplace=True) # Set post_date as the new index
+df_stock.index = pd.to_datetime(df_stock.index) # Ensure the index is a datetime object
+
+# print(df_stock.head())
+# exit(0)
 
 # Ensure date parsing for plotting
 df['post_published_date'] = pd.to_datetime(df['post_published_date'])
+
+# Assuming 'content' column contains strings
+df['total_words'] = df['content'].str.count(' ')+1
 
 # Sort data by date
 df = df.sort_values(by='post_published_date')
@@ -40,6 +78,31 @@ daily_avg['post_published_date'] = pd.to_datetime(daily_avg['post_date']) + pd.T
 # Add a daily count of samples
 daily_counts = df.groupby('post_date').size().reset_index(name='daily_count')
 
+# Maximum number of words for daily sample count
+daily_max_words = df.groupby('post_date')['total_words'].max().reset_index()
+daily_max_words.rename(columns={'total_words': 'max_words'}, inplace=True)
+
+# Normalize max_words (scaling between 0 and 1)
+max_words_min = daily_max_words['max_words'].min()
+max_words_max = daily_max_words['max_words'].max()
+daily_max_words['max_words_normalized'] = 2 * (daily_max_words['max_words'] - max_words_min) / (max_words_max - max_words_min) - 1
+
+# Add 'post_published_date' for plotting
+daily_max_words['post_published_date'] = pd.to_datetime(daily_max_words['post_date']) + pd.Timedelta(hours=12)
+
+
+
+# Set indices for merging
+daily_avg.set_index('post_date', inplace=True)
+daily_counts.set_index(pd.to_datetime(daily_counts['post_date']), inplace=True)
+daily_max_words.set_index('post_date', inplace=True)
+
+# print(daily_avg.head())  # Inspect the daily_avg DataFrame
+# print(daily_counts.head())  # Inspect the daily_counts DataFrame
+# print(daily_max_words.head())  # Inspect the daily_max_words DataFrame
+# print(df_stock.head())  # Inspect the daily_max_words DataFrame
+# exit(0)
+
 # Z-score normalization for daily sample count
 mean_count = daily_counts['daily_count'].mean()
 std_count = daily_counts['daily_count'].std()
@@ -52,6 +115,64 @@ daily_counts['z_score_scaled'] = 2 * (daily_counts['z_score'] - z_min) / (z_max 
 
 # Create a scatter plot for raw values and a line plot for daily averages
 fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+
+# Add the financial data to the plot
+fig.add_trace(
+    go.Scatter(
+        x=df_stock.index,
+        y=df_stock['Volume'],
+        mode='lines',
+        name="Volume",
+        line=dict(width=2, dash="dot")
+    ),
+    secondary_y=True
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=df_stock.index,
+        y=df_stock['close_pct_change'],
+        mode='lines',
+        name="Close Procent Change",
+        line=dict(width=2)
+    ),
+    secondary_y=False
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=df_stock.index,
+        y=df_stock['Histogram'],
+        mode='lines',
+        name="Histogram",
+        line=dict(width=2)
+    ),
+    secondary_y=True
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=df_stock.index,
+        y=df_stock['Signal'],
+        mode='lines',
+        name="Signal",
+        line=dict(width=2, dash="dot")
+    ),
+    secondary_y=True
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=df_stock.index,
+        y=df_stock['MACD'],
+        mode='lines',
+        name="MACD",
+        line=dict(width=2, color="green")
+    ),
+    secondary_y=True
+)
+
 
 metrics = ["credibility_value", "outlook_value", "referential_depth_value", "sentiment_value"]
 
@@ -91,6 +212,18 @@ fig.add_trace(
     )
 )
 
+
+# Add a line plot for normalized max words
+fig.add_trace(
+    go.Scatter(
+        x=daily_max_words['post_published_date'],
+        y=daily_max_words['max_words_normalized'],
+        mode='lines',
+        name="Normalized Daily Max Words",
+        line=dict(width=2)  # Dotted line for distinct visualization
+    )
+)
+
 # Update layout with secondary y-axis for scaled Z-score daily sample count
 fig.update_layout(
     title="Metrics Over Time with Z-Score Scaled Daily Sample Count",
@@ -110,3 +243,19 @@ fig.update_layout(
 output_html_path = "metrics_with_z_score_scaled_counts_plot.html"
 fig.write_html(output_html_path)
 output_html_path
+
+#Save all the data that is used for the graphs as parquet in a single dataframe with the same time index
+merged_df = df_stock.copy()
+
+for metric in ["credibility_value", "outlook_value", "referential_depth_value", "sentiment_value"]:
+    merged_df[metric] = daily_avg[metric]
+
+merged_df['z_score_scaled'] = daily_counts['z_score_scaled']
+merged_df['max_words_normalized'] = daily_max_words['max_words_normalized']
+
+# Fill missing values
+merged_df.fillna(0, inplace=True)
+
+# Save the merged DataFrame as a Parquet file
+merged_df.to_parquet("combined_metrics_and_stock_data.parquet")
+print("Data saved to 'combined_metrics_and_stock_data.parquet'")
