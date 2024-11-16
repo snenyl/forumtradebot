@@ -14,6 +14,7 @@ collection_pci_biotech_osebx = db_osebx.PCIB_1D
 data = list(collection_pci_biotech_tek.find({}, {
     "post_published_date": 1,
     "content": 1,
+    "author": 1,
     "credibility_value": 1,
     "outlook_value": 1,
     "referential_depth_value": 1,
@@ -47,6 +48,16 @@ df_stock['close_pct_change'] = df_stock['close'].pct_change() * 100
 df_stock['Volume'] = (df_stock['Volume'] - df_stock['Volume'].min()) / (df_stock['Volume'].max() - df_stock['Volume'].min())
 df_stock['close_pct_change'] = 2 * ((df_stock['close'].pct_change() - df_stock['close'].pct_change().min()) /
                                     (df_stock['close'].pct_change().max() - df_stock['close'].pct_change().min())) - 1# df_stock['close'] = (df_stock['close'] - df_stock['close'].min()) / (df_stock['close'].max() - df_stock['close'].min())
+
+# Calculate the 5-day percentage change in closing price
+df_stock['close_pct_change_5d'] = df_stock['close'].pct_change(periods=5) * 100  # 5-day percentage change
+
+# Get the maximum and minimum values of close_pct_change_5d
+max_change_5d = df_stock['close_pct_change_5d'].max()  # Maximum percentage change
+min_change_5d = df_stock['close_pct_change_5d'].min()  # Minimum percentage change
+
+# Normalize close_pct_change_5d to range [-1, 1], preserving positive and negative signs
+df_stock['close_pct_change_5d'] = df_stock['close_pct_change_5d'] / max(abs(max_change_5d), abs(min_change_5d))
 
 # Add post_date column containing only the date part
 df_stock['post_date'] = df_stock.index.date  # Extract the date from the datetime index
@@ -113,6 +124,26 @@ z_min = daily_counts['z_score'].min()
 z_max = daily_counts['z_score'].max()
 daily_counts['z_score_scaled'] = 2 * (daily_counts['z_score'] - z_min) / (z_max - z_min) - 1
 
+
+#Snoeffelen start
+
+snoeffelen_df = df[df['author'] == 'Snoeffelen'] # Filter data for the specific author
+snoeffelen_df['post_published_date'] = pd.to_datetime(snoeffelen_df['post_published_date']) # Ensure date parsing for plotting
+snoeffelen_df = snoeffelen_df.sort_values(by='post_published_date') # Sort data by date
+snoeffelen_df = snoeffelen_df.fillna(0) # Fill missing values (if any)
+snoeffelen_daily_samples = snoeffelen_df.groupby(snoeffelen_df['post_published_date'].dt.date).size().reset_index(name='daily_sample_count') # Count daily samples (posts) for Snoeffelen
+snoeffelen_daily_samples.rename(columns={"post_published_date": "date"}, inplace=True) # Rename columns for clarity
+
+# Normalize the daily sample count
+min_samples = snoeffelen_daily_samples['daily_sample_count'].min() # Find the minimum value
+max_samples = snoeffelen_daily_samples['daily_sample_count'].max() # Find the maximum value
+snoeffelen_daily_samples['normalized_daily_sample_count'] =2 * (snoeffelen_daily_samples['daily_sample_count'] - min_samples) / (max_samples - min_samples) - 1# Apply Min-Max normalization
+
+
+#Snoeefelen end test
+
+
+
 # Create a scatter plot for raw values and a line plot for daily averages
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -135,6 +166,17 @@ fig.add_trace(
         y=df_stock['close_pct_change'],
         mode='lines',
         name="Close Procent Change",
+        line=dict(width=2)
+    ),
+    secondary_y=False
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=df_stock.index,
+        y=df_stock['close_pct_change_5d'],
+        mode='lines',
+        name="Close Percent Change 5D",
         line=dict(width=2)
     ),
     secondary_y=False
@@ -236,6 +278,17 @@ fig.update_layout(
         overlaying='y',
         side='right',
         showgrid=False
+    )
+)
+
+# Snoeffelen
+fig.add_trace(
+    go.Scatter(
+        x=snoeffelen_daily_samples['date'], # Use the date column for the x-axis
+        y=snoeffelen_daily_samples['normalized_daily_sample_count'], # Use the normalized daily sample count for the y-axis
+        mode='lines', # Show both lines and markers
+        name="Snoeffelen Normalized Daily Sample Count", # Legend entry name
+        line=dict(width=2, color="blue") # Customize line width and color
     )
 )
 

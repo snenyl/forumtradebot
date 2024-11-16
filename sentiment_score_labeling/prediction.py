@@ -104,3 +104,6 @@ fig_importance = px.bar(
 # Show the plots
 fig_performance.show()
 fig_importance.show()
+
+# Save model
+model.save_model("xgboost_pcib_model.json")

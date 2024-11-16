@@ -8,7 +8,9 @@ from threading import Lock
 # MongoDB connection setup
 client = MongoClient('mongodb://mongoadmin:secret@10.0.0.150:27017/?authMechanism=DEFAULT')  # Adjust with your MongoDB URI if needed
 db = client.tekinvestor
-collection = db.pci_biotech_llama_10
+# collection = db.pci_biotech_llama_10
+collection = db.photocure_llama_10
+# collection = db.ultimovacs_llama_10
 
 # Prompt prefix
 prompt_prefix = """
